@@ -1,53 +1,93 @@
 // script.js
 // Lightweight interactions for the Leviron portfolio
 
-async function loadRobloxIcon(placeId, imgId) {
+async function loadRobloxIcon(placeId, id) {
+    const imgId = `${id}-icon`;
+    const visitsId = `${id}-visits`;
+
     const cacheKey = `rbx-icon-${placeId}`;
     const cacheTimeKey = `${cacheKey}-time`;
 
     const DAY = 24 * 60 * 60 * 1000;
 
-    const cachedUrl = localStorage.getItem(cacheKey);
+    let cached = null;
+    try {
+        cached = JSON.parse(localStorage.getItem(cacheKey));
+    } catch {
+        localStorage.removeItem(cacheKey);
+        localStorage.removeItem(cacheTimeKey);
+    }
+
     const cachedTime = Number(localStorage.getItem(cacheTimeKey));
 
-    // Use cached image if it's less than 24 hours old
-    if (cachedUrl && Date.now() - cachedTime < DAY) {
-        document.getElementById(imgId).src = cachedUrl;
+    // Use cached data if it's less than 24 hours old
+    if (cached && Date.now() - cachedTime < DAY) {
+        document.getElementById(imgId).src = cached.imageUrl;
+        document.getElementById(visitsId).textContent =
+            cached.visits.toLocaleString();
         return;
     }
 
     try {
+        // Place ID -> Universe ID
         const universeRes = await fetch(
             `https://apis.roproxy.com/universes/v1/places/${placeId}/universe`
         );
         const { universeId } = await universeRes.json();
 
-        const iconRes = await fetch(
-            `https://thumbnails.roproxy.com/v1/games/icons?universeIds=${universeId}&size=512x512&format=Png&isCircular=false`
-        );
-        const data = await iconRes.json();
+        // Fetch icon and game stats at the same time
+        const [iconRes, gameRes] = await Promise.all([
+            fetch(
+                `https://thumbnails.roproxy.com/v1/games/icons?universeIds=${universeId}&size=512x512&format=Png&isCircular=false`
+            ),
+            fetch(
+                `https://games.roproxy.com/v1/games?universeIds=${universeId}`
+            )
+        ]);
 
-        const imageUrl = data.data[0].imageUrl;
+        const iconData = await iconRes.json();
+        const gameData = await gameRes.json();
 
-        document.getElementById(imgId).src = imageUrl;
+        const imageUrl = iconData.data?.[0]?.imageUrl;
+        const visits = gameData.data?.[0]?.visits;
 
-        // Save to cache
-        localStorage.setItem(cacheKey, imageUrl);
-        localStorage.setItem(cacheTimeKey, Date.now());
+        // Update icon
+        document.getElementById(imgId).src =
+            imageUrl || "placeholder.png";
+
+        // Update visits
+        document.getElementById(visitsId).textContent =
+            visits !== undefined
+                ? visits.toLocaleString()
+                : "undefined";
+
+        // Only cache if BOTH are valid
+        if (imageUrl && visits !== undefined) {
+            localStorage.setItem(cacheKey, JSON.stringify({
+                imageUrl,
+                visits
+            }));
+            localStorage.setItem(cacheTimeKey, Date.now());
+        }
+
     } catch (err) {
         console.error(err);
+
+        // Don't cache fallback values
+        document.getElementById(imgId).src = "placeholder.png";
+        document.getElementById(visitsId).textContent = "undefined";
     }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
 
-    loadRobloxIcon(116495829188952, "deadrails-icon");
-    loadRobloxIcon(126884695634066  , "gag-icon");
-    loadRobloxIcon(101275764323516  , "jetpack-icon");
-    loadRobloxIcon(71074948113192  , "1vsall-icon");
-    loadRobloxIcon(125416149347004  , "tlr-icon");
-    loadRobloxIcon(9897400758  , "charlie-icon");
-    loadRobloxIcon(9339135643  , "cactus-icon");
+    loadRobloxIcon(116495829188952, "deadrails");
+    loadRobloxIcon(126884695634066, "gag");
+    loadRobloxIcon(101275764323516, "jetpack");
+    loadRobloxIcon(71074948113192, "1vsall");
+    loadRobloxIcon(125416149347004, "tlr");
+    loadRobloxIcon(9897400758, "charlie");
+    loadRobloxIcon(9339135643, "cactus");
     // Active nav links
     const sections = document.querySelectorAll("section");
     const navLinks = document.querySelectorAll("nav a");
