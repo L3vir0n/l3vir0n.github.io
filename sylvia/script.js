@@ -1,0 +1,1 @@
+document.getElementById('inviteBtn').onclick=()=>window.open('https://leviron.xyz/sylvia','_blank');

@@ -1,0 +1,191 @@
+/* style.css
+   Modern portfolio theme for Leviron
+*/
+:root{
+ --bg:#0b1020;
+ --bg2:#151b35;
+ --card:rgba(23,28,50,.72);
+ --accent:#7c5cff;
+ --accent2:#4cc9f0;
+ --text:#eef2ff;
+ --muted:#b7bfd9;
+ --radius:18px;
+ --shadow:0 10px 30px rgba(0,0,0,.35);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+ font-family:Inter,system-ui,sans-serif;
+ color:var(--text);
+ background:linear-gradient(-45deg,#090b16,#12193a,#24195d,#0b1020);
+ background-size:400% 400%;
+ animation:bg 16s ease infinite;
+ min-height:100vh;
+}
+@keyframes bg{
+0%{background-position:0 50%}
+50%{background-position:100% 50%}
+100%{background-position:0 50%}
+}
+.background{
+ position:fixed;inset:0;pointer-events:none;
+ background:
+ radial-gradient(circle at 20% 20%,rgba(124,92,255,.15),transparent 30%),
+ radial-gradient(circle at 80% 70%,rgba(76,201,240,.12),transparent 30%);
+}
+header{
+ position:sticky;top:0;z-index:99;
+ display:flex;justify-content:space-between;align-items:center;
+ padding:18px 8%;
+ backdrop-filter:blur(14px);
+ background:rgba(10,14,28,.45);
+ border-bottom:1px solid rgba(255,255,255,.08)
+}
+.logo{
+ font-size:2rem;font-weight:800;
+ background:linear-gradient(90deg,#fff,#a78bfa,#4cc9f0);
+ -webkit-background-clip:text;background-clip:text;color:transparent;
+ text-shadow:0 0 14px rgba(124,92,255,.8);
+ animation:glow 2.5s ease-in-out infinite alternate;
+}
+@keyframes glow{
+from{filter:drop-shadow(0 0 6px #7c5cff)}
+to{filter:drop-shadow(0 0 18px #4cc9f0)}
+}
+nav{display:flex;gap:22px;flex-wrap:wrap}
+nav a{
+ color:var(--text);text-decoration:none;font-weight:600;position:relative
+}
+nav a:after{
+ content:"";position:absolute;left:0;bottom:-5px;width:0;height:2px;
+ background:var(--accent);transition:.25s
+}
+nav a:hover:after{width:100%}
+.section{
+ max-width:1100px;margin:auto;
+ padding:90px 24px;
+}
+h2{font-size:2rem;margin-bottom:28px}
+.card,.project{
+ background:var(--card);
+ border:1px solid rgba(255,255,255,.08);
+ backdrop-filter:blur(16px);
+ border-radius:var(--radius);
+ box-shadow:var(--shadow);
+ transition:.25s;
+}
+.card:hover,.project:hover{
+ transform:translateY(-6px);
+ box-shadow:0 20px 40px rgba(0,0,0,.45);
+}
+.about-card{
+ display:grid;
+ grid-template-columns:220px 1fr;
+ gap:36px;
+ padding:34px;
+ align-items:center;
+}
+.profile-image{
+ width:180px;height:180px;
+ border-radius:50%;
+ object-fit:cover;
+ border:3px solid var(--accent);
+ box-shadow:0 0 25px rgba(124,92,255,.55);
+}
+.glow-title{
+ font-size:2.5rem;
+ margin-bottom:18px;
+ text-shadow:0 0 12px rgba(124,92,255,.7);
+}
+.about-text p{line-height:1.8;color:var(--muted)}
+.social-container{
+ display:flex;justify-content:center;gap:24px;flex-wrap:wrap
+}
+.social{
+ width:84px;height:84px;
+ display:flex;align-items:center;justify-content:center;
+ border-radius:18px;
+ background:var(--card);
+ border:1px solid rgba(255,255,255,.08);
+ transition:.25s;
+ box-shadow:var(--shadow);
+}
+.social img{
+ width:52px;height:52px;object-fit:contain
+}
+.social:hover{
+ transform:translateY(-8px) scale(1.05);
+ box-shadow:0 0 30px rgba(124,92,255,.6);
+}
+.portfolio-wrapper{
+ display:grid;
+ gap:22px;
+}
+.project{
+ display:grid;
+ grid-template-columns:160px 1fr;
+ gap:24px;
+ padding:20px;
+}
+.project-image{
+ width:150px;height:150px;
+ border-radius:12px;
+ object-fit:cover;
+}
+.project-info h3{margin-bottom:8px}
+.project-info p,.project-info span{color:var(--muted)}
+footer{
+ text-align:center;
+ padding:32px;
+ color:var(--muted);
+}
+@media (max-width:768px){
+ header{padding:16px}
+ .about-card,.project{
+  grid-template-columns:1fr;
+  text-align:center;
+ }
+ .profile-image,.project-image{
+  margin:auto;
+ }
+ .logo{font-size:1.7rem}
+ nav{justify-content:center}
+}
+
+/* =========================
+   BUTTONS FIX (SYLVIA UI)
+========================= */
+
+.button-group{
+ display:flex;
+ gap:16px;
+ margin-top:32px;
+ flex-wrap:wrap;
+}
+
+.btn{
+ padding:14px 34px;
+ border-radius:14px;
+ font-size:1rem;
+ font-weight:700;
+ text-decoration:none;
+ display:inline-block;
+ transition:.25s;
+ box-shadow:var(--shadow);
+}
+
+.primary-btn{
+ background:linear-gradient(90deg,var(--accent),var(--accent2));
+ color:#fff;
+}
+
+.secondary-btn{
+ background:rgba(255,255,255,.08);
+ color:#fff;
+ border:1px solid rgba(255,255,255,.12);
+}
+
+.btn:hover{
+ transform:translateY(-5px);
+ box-shadow:0 0 30px rgba(124,92,255,.7);
+}
