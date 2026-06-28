@@ -84,6 +84,7 @@ document.addEventListener("DOMContentLoaded", () => {
     loadRobloxIcon(116495829188952, "deadrails");
     loadRobloxIcon(126884695634066, "gag");
     loadRobloxIcon(101275764323516, "jetpack");
+    loadRobloxIcon(102054284786904, "STA");
     loadRobloxIcon(71074948113192, "1vsall");
     loadRobloxIcon(125416149347004, "tlr");
     loadRobloxIcon(9897400758, "charlie");
