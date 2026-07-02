@@ -1,6 +1,5 @@
 // script.js
 // Lightweight interactions for the Leviron portfolio
-
 async function loadRobloxIcon(placeId, id) {
     const imgId = `${id}-icon`;
     const visitsId = `${id}-visits`;
@@ -10,7 +9,25 @@ async function loadRobloxIcon(placeId, id) {
 
     const DAY = 24 * 60 * 60 * 1000;
 
+    // Format numbers like Roblox
+    function formatVisits(num) {
+        if (num >= 1_000_000_000) {
+            return (num / 1_000_000_000).toFixed(1).replace(".0", "") + "B+";
+        }
+
+        if (num >= 1_000_000) {
+            return (num / 1_000_000).toFixed(1).replace(".0", "") + "M+";
+        }
+
+        if (num >= 1_000) {
+            return (num / 1_000).toFixed(1).replace(".0", "") + "K+";
+        }
+
+        return num.toString();
+    }
+
     let cached = null;
+
     try {
         cached = JSON.parse(localStorage.getItem(cacheKey));
     } catch {
@@ -24,18 +41,20 @@ async function loadRobloxIcon(placeId, id) {
     if (cached && Date.now() - cachedTime < DAY) {
         document.getElementById(imgId).src = cached.imageUrl;
         document.getElementById(visitsId).textContent =
-            cached.visits.toLocaleString();
+            formatVisits(cached.visits);
         return;
     }
 
     try {
+
         // Place ID -> Universe ID
         const universeRes = await fetch(
             `https://apis.roproxy.com/universes/v1/places/${placeId}/universe`
         );
+
         const { universeId } = await universeRes.json();
 
-        // Fetch icon and game stats at the same time
+        // Fetch icon and visits simultaneously
         const [iconRes, gameRes] = await Promise.all([
             fetch(
                 `https://thumbnails.roproxy.com/v1/games/icons?universeIds=${universeId}&size=512x512&format=Png&isCircular=false`
@@ -58,22 +77,22 @@ async function loadRobloxIcon(placeId, id) {
         // Update visits
         document.getElementById(visitsId).textContent =
             visits !== undefined
-                ? visits.toLocaleString()
+                ? formatVisits(visits)
                 : "undefined";
 
-        // Only cache if BOTH are valid
+        // Cache only valid data
         if (imageUrl && visits !== undefined) {
             localStorage.setItem(cacheKey, JSON.stringify({
                 imageUrl,
                 visits
             }));
+
             localStorage.setItem(cacheTimeKey, Date.now());
         }
 
     } catch (err) {
         console.error(err);
 
-        // Don't cache fallback values
         document.getElementById(imgId).src = "placeholder.png";
         document.getElementById(visitsId).textContent = "undefined";
     }
@@ -83,10 +102,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     loadRobloxIcon(116495829188952, "deadrails");
     loadRobloxIcon(126884695634066, "gag");
-    loadRobloxIcon(101275764323516, "jetpack");
     loadRobloxIcon(102054284786904, "STA");
-    loadRobloxIcon(71074948113192, "1vsall");
-    loadRobloxIcon(125416149347004, "tlr");
+    loadRobloxIcon(78724049937437, "PAS");
+    loadRobloxIcon(101275764323516, "jetpack");
     loadRobloxIcon(9897400758, "charlie");
     loadRobloxIcon(9339135643, "cactus");
     // Active nav links
