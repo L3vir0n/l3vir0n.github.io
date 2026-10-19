@@ -1,108 +1,143 @@
 // ================= Portfolio Settings =================
 const GAMES_PER_PAGE = 4;
 
-// Starter dynamic portfolio.
-// Replace/add objects in the games array.
-// script.js
-// Lightweight interactions for the Leviron portfolio
+// Your Cloudflare Worker - the ONLY source of game data
+const GAMES_API = "https://muddy-sky-974d.ianchanelph.workers.dev/games";
 
-async function loadRobloxIcon(placeId, id) {
-    const imgId = `${id}-icon`;
-    const visitsId = `${id}-visits`;
+// Cache settings
+const CACHE_KEY = "leviron-games-cache-v2";
+const CACHE_TTL = 24 * 60 * 60 * 1000;   // 24 hours
+const RETRY_COOLDOWN = 5 * 60 * 1000;     // if cached data is incomplete, don't re-ping more than once per 5 min
 
-    const cacheKey = `rbx-icon-${placeId}`;
-    const cacheTimeKey = `${cacheKey}-time`;
+// Silly error messages (one is picked at random)
+const ERROR_MESSAGES = [
+    { emoji: "💥", title: "I think it broke...", sub: "Mind refreshing the site?" },
+    { emoji: "🔌", title: "Something got unplugged.", sub: "The games went on a coffee break. Try again?" },
+    { emoji: "🦆", title: "The API walked away.", sub: "Failed to fetch. Maybe it'll come back if you ask nicely." },
+    { emoji: "🛠️", title: "Oops, failed to fetch.", sub: "Refresh the site or hit retry!" }
+];
 
-    const DAY = 24 * 60 * 60 * 1000;
-
-    // Format numbers like Roblox
-    function formatVisits(num) {
-        if (num >= 1_000_000_000) {
-            return (num / 1_000_000_000).toFixed(1).replace(".0", "") + "B+";
-        }
-
-        if (num >= 1_000_000) {
-            return (num / 1_000_000).toFixed(1).replace(".0", "") + "M+";
-        }
-
-        if (num >= 1_000) {
-            return (num / 1_000).toFixed(1).replace(".0", "") + "K+";
-        }
-
-        return num.toString();
+// ================= Number formatting (like Roblox) =================
+function formatVisits(num) {
+    if (num >= 1_000_000_000) {
+        return (num / 1_000_000_000).toFixed(1).replace(".0", "") + "B+";
     }
 
-    let cached = null;
+    if (num >= 1_000_000) {
+        return (num / 1_000_000).toFixed(1).replace(".0", "") + "M+";
+    }
 
+    if (num >= 1_000) {
+        return (num / 1_000).toFixed(1).replace(".0", "") + "K+";
+    }
+
+    return num.toString();
+}
+
+// ================= Games data (single API + 24h cache) =================
+
+// A game is usable only if it has everything a card needs
+function isValidGame(g) {
+    return !!g &&
+        g.placeId !== undefined && g.placeId !== null &&
+        typeof g.name === "string" && g.name.length > 0 &&
+        typeof g.imageUrl === "string" && g.imageUrl.length > 0 &&
+        typeof g.visits === "number";
+}
+
+function sortGames(list) {
+    return [...list].sort((a, b) => (a.rank ?? 9999) - (b.rank ?? 9999));
+}
+
+function readCache() {
     try {
-        cached = JSON.parse(localStorage.getItem(cacheKey));
+        const raw = JSON.parse(localStorage.getItem(CACHE_KEY));
+
+        if (raw && Array.isArray(raw.games) && typeof raw.time === "number") {
+            return raw;
+        }
     } catch {
-        localStorage.removeItem(cacheKey);
-        localStorage.removeItem(cacheTimeKey);
-    }
-
-    const cachedTime = Number(localStorage.getItem(cacheTimeKey));
-
-    // Use cached data if it's less than 24 hours old
-    if (cached && Date.now() - cachedTime < DAY) {
-        document.getElementById(imgId).src = cached.imageUrl;
-        document.getElementById(visitsId).textContent =
-            formatVisits(cached.visits);
-        return;
+        // corrupted cache, drop it below
     }
 
     try {
-        // Place ID -> Universe ID
-        const universeRes = await fetch(
-            `https://apis.roproxy.com/universes/v1/places/${placeId}/universe`
-        );
+        localStorage.removeItem(CACHE_KEY);
+    } catch {}
 
-        const { universeId } = await universeRes.json();
+    return null;
+}
 
-        // Fetch icon and visits simultaneously
-        const [iconRes, gameRes] = await Promise.all([
-            fetch(
-                `https://thumbnails.roproxy.com/v1/games/icons?universeIds=${universeId}&size=512x512&format=Png&isCircular=false`
-            ),
-            fetch(
-                `https://games.roproxy.com/v1/games?universeIds=${universeId}`
-            )
-        ]);
-
-        const iconData = await iconRes.json();
-        const gameData = await gameRes.json();
-
-        const imageUrl = iconData.data?.[0]?.imageUrl;
-        const visits = gameData.data?.[0]?.visits;
-
-        // Update icon
-        document.getElementById(imgId).src =
-            imageUrl || "placeholder.png";
-
-        // Update visits
-        document.getElementById(visitsId).textContent =
-            visits !== undefined
-                ? formatVisits(visits)
-                : "undefined";
-
-        // Cache only valid data
-        if (imageUrl && visits !== undefined) {
-            localStorage.setItem(cacheKey, JSON.stringify({
-                imageUrl,
-                visits
-            }));
-
-            localStorage.setItem(cacheTimeKey, Date.now());
-        }
-
+function writeCache(games) {
+    try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({
+            time: Date.now(),
+            games
+        }));
     } catch (err) {
-        console.error(err);
-
-        document.getElementById(imgId).src = "placeholder.png";
-        document.getElementById(visitsId).textContent = "undefined";
+        // storage full / blocked - the site still works, just without caching
+        console.warn("Could not save cache:", err);
     }
 }
 
+async function fetchFromApi() {
+    const res = await fetch(GAMES_API);
+
+    if (!res.ok) {
+        throw new Error(`API responded with ${res.status}`);
+    }
+
+    const json = await res.json();
+
+    if (!json || !Array.isArray(json.games)) {
+        throw new Error("Unexpected API response");
+    }
+
+    return json.games;
+}
+
+// Returns an array of usable games (empty array = nothing to show)
+// force = true skips the cache (used by the Retry button)
+async function loadGames(force = false) {
+    const cache = readCache();
+    const cachedGames = cache ? cache.games : [];
+    const usableCached = cachedGames.filter(isValidGame);
+    const cacheComplete = usableCached.length > 0 &&
+        usableCached.length === cachedGames.length;
+    const age = cache ? Date.now() - cache.time : Infinity;
+
+    if (!force) {
+        // 1) Fresh (<24h) and nothing missing -> don't touch the API at all
+        if (cache && age < CACHE_TTL && cacheComplete) {
+            return sortGames(usableCached);
+        }
+
+        // 2) Cache is recent but has broken/missing parts -> don't hammer the API on every reload
+        if (cache && age < RETRY_COOLDOWN && usableCached.length > 0) {
+            return sortGames(usableCached);
+        }
+    }
+
+    // 3) Expired, missing, incomplete, or forced -> ask the API once
+    try {
+        const fresh = await fetchFromApi();
+        const usable = fresh.filter(isValidGame);
+
+        if (usable.length === 0) {
+            throw new Error("API returned no usable games");
+        }
+
+        writeCache(fresh);
+
+        return sortGames(usable);
+    } catch (err) {
+        console.error("Failed to fetch games:", err);
+
+        // Fall back to old cached data (even if expired) rather than showing nothing
+        return sortGames(usableCached);
+    }
+}
+
+// ================= Title slide on hover =================
 function enableTitleSlide(card) {
     const titleBox = card.querySelector(".game-title");
     const title = titleBox.querySelector("h3");
@@ -130,33 +165,6 @@ function enableTitleSlide(card) {
         title.style.transform = "translateX(0)";
     });
 }
-
-const games = [
-    {id:"gag",name:"Grow A Garden",placeId:126884695634066,roles:["Tester"],visible:true},
-    {id:"99nitf",name:"99 Nights in the Forest ",placeId:79546208627805,roles:["Tester"],visible:true},
-    {id:"deadrails",name:"Deadrails",placeId:116495829188952,roles:["Tester","Moderator"],visible:true},
-    {id:"STA",name:"Secure the Airport",placeId:102054284786904,roles:["Tester"],visible:true},
-    {id:"DtL",name:"Drain the Lake",placeId:138381251771774,roles:["Tester"],visible:true},
-    {id:"PAS",name:"Paint And SEEK!",placeId:78724049937437,roles:["Tester"],visible:true},
-    {id:"Wheelie",name:"Wheelie District",placeId:89490838554710,roles:["Tester"],visible:true},
-    {id:"lakesipping",name:"Lake Sipping",placeId:119715129239364,roles:["Tester"],visible:true},
-    {id:"manga",name:"Clean the Manga Shop!",placeId:85165894169093,roles:["Tester"],visible:true},
-    {id:"killer",name:"🔪 KILLER",placeId:127829441663442,roles:["Tester"],visible:true},
-    {id:"MSP",name:"My Soup Pot",placeId:80140153393811,roles:["Tester"],visible:true},
-    {id:"HonKey",name:"Honey Keyboard Escape",placeId:128734226473807,roles:["Tester"],visible:true},
-    {id:"Grapple",name:"Grapple 100 Stages!",placeId:82648824453490,roles:["Tester"],visible:true},
-    {id:"mc",name:"Mine & Craft",placeId:82792613389716,roles:["Tester"],visible:false},
-    {id:"jetpack",name:"Jetpack Shooter",placeId:101275764323516,roles:["Tester"],visible:false},
-    {id:"ASMRPlay",name:"My ASMR Playground!",placeId:134617829197967,roles:["Tester"],visible:false},
-    {id:"charlie",name:"Charlie Charlie",placeId:9897400758,roles:["Developer"],visible:false},
-    {id:"cactus",name:"Dancing Cactus",placeId:9339135643,roles:["Developer"],visible:false},
-    {id:"FTP",name:"Fix The Printer at 3AM",placeId:84381674157425,roles:["Developer"],visible:false},
-    {id:"CC",name:"Charlie Charlie [Classic]",placeId:122766743049777,roles:["Developer"],visible:false},
-    {id:"ETO",name:"Espresso Tower Obby",placeId:128841088637534,roles:["Developer"],visible:false},
-];
-
-// Only games explicitly marked visible get rendered into the portfolio
-const visibleGames = games.filter(g => g.visible !== false);
 
 // ================= Timezone badge (UTC+8) =================
 (function() {
@@ -223,61 +231,194 @@ const visibleGames = games.filter(g => g.visible !== false);
     });
 })();
 
-// ================= Portfolio Pagination =================
-let index = 0;
-
+// ================= Portfolio rendering =================
 const grid = document.getElementById("portfolio-grid");
 const btn = document.getElementById("loadMore");
 
+// Status area (spinner / error) sits between the title and the grid
+const status = document.createElement("div");
+status.className = "portfolio-status";
+grid.parentNode.insertBefore(status, grid);
+
+let allGames = [];
+let index = 0;
+
 function card(g) {
     const d = document.createElement("div");
-
     d.className = "portfolio-card";
 
-    d.innerHTML = `
-        <img id="${g.id}-icon" class="portfolio-image">
+    // Built with DOM methods (not innerHTML) so game names can never inject HTML
+    const img = document.createElement("img");
+    img.className = "portfolio-image";
+    img.src = g.imageUrl;
+    img.alt = g.name;
+    img.loading = "lazy";
+    img.onerror = () => {
+        img.onerror = null;
+        img.src = "placeholder.png";
+    };
 
-        <div class="portfolio-content">
-            <div class="game-title">
-                <h3>${g.name}</h3>
-            </div>
+    const content = document.createElement("div");
+    content.className = "portfolio-content";
 
-            ${g.roles.map(r => `<span class="role">${r}</span>`).join("")}
+    const titleBox = document.createElement("div");
+    titleBox.className = "game-title";
 
-            <p>Total Visits</p>
-            <strong id="${g.id}-visits">Loading...</strong>
-        </div>
-    `;
+    const h3 = document.createElement("h3");
+    h3.textContent = g.name.trim();
+    titleBox.appendChild(h3);
+    content.appendChild(titleBox);
+
+    // Roles are optional - they only show up if the API sends a "roles" array
+    if (Array.isArray(g.roles)) {
+        for (const r of g.roles) {
+            const span = document.createElement("span");
+            span.className = "role";
+            span.textContent = r;
+            content.appendChild(span);
+        }
+    }
+
+    const label = document.createElement("p");
+    label.textContent = "Total Visits";
+
+    const visits = document.createElement("strong");
+    visits.textContent = formatVisits(g.visits);
+
+    content.append(label, visits);
+    d.append(img, content);
 
     return d;
 }
 
 function loadMore() {
-    const end = Math.min(
-        index + GAMES_PER_PAGE,
-        visibleGames.length
-    );
+    const end = Math.min(index + GAMES_PER_PAGE, allGames.length);
 
     for (let i = index; i < end; i++) {
-        const c = card(visibleGames[i]);
+        const c = card(allGames[i]);
 
         grid.appendChild(c);
         enableTitleSlide(c);
-
-        if (typeof loadRobloxIcon === "function") {
-            loadRobloxIcon(
-                visibleGames[i].placeId,
-                visibleGames[i].id
-            );
-        }
     }
 
     index = end;
 
-    if (index >= visibleGames.length) {
-        btn.style.display = "none";
+    btn.style.display = index >= allGames.length ? "none" : "";
+}
+
+// ---------- Loading UI ----------
+function showLoading() {
+    btn.style.display = "none";
+    grid.innerHTML = "";
+
+    status.innerHTML = `
+        <div class="spinner"></div>
+        <span>Loading games...</span>
+    `;
+
+    for (let i = 0; i < GAMES_PER_PAGE; i++) {
+        const sk = document.createElement("div");
+        sk.className = "skeleton-card";
+        sk.innerHTML = `
+            <div class="sk-img"></div>
+            <div class="sk-body">
+                <div class="sk-line w80"></div>
+                <div class="sk-line w35"></div>
+                <div class="sk-line w50"></div>
+            </div>
+        `;
+        grid.appendChild(sk);
     }
 }
 
+// ---------- Error UI ----------
+function showError() {
+    btn.style.display = "none";
+    grid.innerHTML = "";
+
+    const msg = ERROR_MESSAGES[Math.floor(Math.random() * ERROR_MESSAGES.length)];
+
+    status.innerHTML = `
+        <div class="error-box">
+            <span class="error-emoji">${msg.emoji}</span>
+            <div class="error-title">${msg.title}</div>
+            <div class="error-sub">${msg.sub}</div>
+            <button id="retryBtn">Retry</button>
+        </div>
+    `;
+
+    document.getElementById("retryBtn").addEventListener("click", () => init(true));
+}
+
+// ---------- Start ----------
+async function init(force = false) {
+    showLoading();
+
+    const games = await loadGames(force);
+
+    status.innerHTML = "";
+    grid.innerHTML = "";
+
+    if (games.length === 0) {
+        showError();
+        return;
+    }
+
+    allGames = games;
+    index = 0;
+    loadMore();
+}
+
 btn.addEventListener("click", loadMore);
-loadMore();
+init();
+
+
+// ================= Roblox Plus popup ad =================
+(function() {
+    const AD_LINK = "https://www.roblox.com/plus-referral?v=v2&code=1bb6fe0c-c172-4aed-894f-e6b6768f2e51";
+    const AD_KEY = "leviron-plus-ad-dismissed";
+    const AD_HIDE_FOR = 24 * 60 * 60 * 1000;   // stays hidden for 24h after pressing X
+    const AD_DELAY = 2500;                      // slides in after 2.5s
+
+    // Don't show it if the visitor closed it recently
+    try {
+        const closedAt = Number(localStorage.getItem(AD_KEY));
+
+        if (closedAt && Date.now() - closedAt < AD_HIDE_FOR) return;
+    } catch {}
+
+    const ad = document.createElement("aside");
+    ad.className = "plus-ad";
+    ad.setAttribute("aria-label", "Roblox Plus offer");
+
+    ad.innerHTML = `
+        <button class="plus-ad-close" type="button" aria-label="Close ad">✕</button>
+
+        <h4>Unlock More with Roblox Plus!</h4>
+        <p>Get the ultimate upgrade for just $4.99/mo:</p>
+
+        <ul>
+            <li>10% OFF items instantly </li>
+            <li>FREE Private Servers</li>
+            <li>Fee-Free Robux Transfers</li>
+        </ul>
+
+        <a class="plus-ad-btn" href="${AD_LINK}" target="_blank" rel="noopener noreferrer sponsored">
+            Upgrade Now 🚀
+        </a>
+    `;
+
+    document.body.appendChild(ad);
+
+    ad.querySelector(".plus-ad-close").addEventListener("click", () => {
+        ad.classList.remove("show");
+
+        try {
+            localStorage.setItem(AD_KEY, Date.now());
+        } catch {}
+
+        setTimeout(() => ad.remove(), 400);
+    });
+
+    setTimeout(() => ad.classList.add("show"), AD_DELAY);
+})();

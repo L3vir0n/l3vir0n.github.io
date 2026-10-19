@@ -479,3 +479,283 @@ button:focus-visible,
     outline:2px solid var(--accent2);
     outline-offset:3px;
 }
+
+/* ================= Portfolio loading / error states ================= */
+
+.portfolio-status{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:14px;
+    text-align:center;
+    color:var(--muted);
+    font-weight:600;
+    margin:10px auto 0;
+}
+
+.portfolio-status:empty{
+    display:none;
+}
+
+.spinner{
+    width:34px;
+    height:34px;
+    border-radius:50%;
+    border:3px solid rgba(255,255,255,.12);
+    border-top-color:var(--accent);
+    animation:spin .8s linear infinite;
+}
+
+@keyframes spin{
+    to{ transform:rotate(360deg); }
+}
+
+.error-box{
+    max-width:420px;
+    padding:26px 30px;
+    border-radius:var(--radius);
+    background:var(--card);
+    border:1px solid rgba(255,92,124,.35);
+    box-shadow:var(--shadow);
+}
+
+.error-box .error-emoji{
+    font-size:2.2rem;
+    display:block;
+    margin-bottom:8px;
+}
+
+.error-box .error-title{
+    color:var(--text);
+    font-size:1.1rem;
+    margin-bottom:6px;
+}
+
+.error-box .error-sub{
+    font-size:.9rem;
+    font-weight:400;
+    margin-bottom:16px;
+}
+
+.error-box button{
+    padding:10px 24px;
+    font-size:.95rem;
+}
+
+/* Skeleton cards shown while waiting for the API */
+
+.skeleton-card{
+    flex:0 0 220px;
+    width:220px;
+    border-radius:18px;
+    overflow:hidden;
+    background:rgba(23,28,50,.75);
+    border:1px solid rgba(255,255,255,.08);
+}
+
+.skeleton-card .sk-img,
+.skeleton-card .sk-line{
+    background:linear-gradient(
+        90deg,
+        rgba(255,255,255,.04) 25%,
+        rgba(255,255,255,.12) 50%,
+        rgba(255,255,255,.04) 75%
+    );
+    background-size:200% 100%;
+    animation:shimmer 1.3s ease-in-out infinite;
+}
+
+.skeleton-card .sk-img{
+    width:100%;
+    aspect-ratio:1/1;
+}
+
+.skeleton-card .sk-body{
+    padding:14px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+}
+
+.skeleton-card .sk-line{
+    height:14px;
+    border-radius:8px;
+}
+
+.skeleton-card .sk-line.w80{ width:80%; }
+.skeleton-card .sk-line.w50{ width:50%; }
+.skeleton-card .sk-line.w35{ width:35%; }
+
+@keyframes shimmer{
+    from{ background-position:200% 0; }
+    to{ background-position:-200% 0; }
+}
+
+@media(max-width:768px){
+    .skeleton-card{
+        flex-basis:180px;
+        width:180px;
+    }
+}
+
+@media(max-width:430px){
+    .skeleton-card{
+        flex-basis:220px;
+        width:220px;
+    }
+}
+
+
+/* ================= Roblox Plus popup ad ================= */
+
+.plus-ad{
+    position:fixed;
+    right:20px;
+    bottom:20px;
+    z-index:100;
+    width:310px;
+    max-width:calc(100vw - 32px);
+    padding:20px 18px 18px;
+    border-radius:var(--radius);
+    background:var(--card);
+    backdrop-filter:blur(16px);
+    -webkit-backdrop-filter:blur(16px);
+    border:1px solid var(--border-hover);
+    box-shadow:var(--shadow-hover);
+    color:var(--text);
+
+    opacity:0;
+    transform:translateX(30px);
+    pointer-events:none;
+    transition:opacity .4s ease, transform .4s ease;
+}
+
+.plus-ad.show{
+    opacity:1;
+    transform:translateX(0);
+    pointer-events:auto;
+}
+
+.plus-ad-tag{
+    position:absolute;
+    top:10px;
+    left:18px;
+    font-size:10px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--muted);
+    opacity:.8;
+}
+
+.plus-ad-close{
+    position:absolute;
+    top:6px;
+    right:6px;
+    width:28px;
+    height:28px;
+    padding:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:50%;
+    font-size:1.1rem;
+    line-height:1;
+    color:var(--muted);
+    background:transparent;
+    border:none;
+    box-shadow:none;
+    backdrop-filter:none;
+}
+
+.plus-ad-close:hover{
+    transform:none;
+    color:var(--text);
+    background:rgba(255,255,255,.1);
+    box-shadow:none;
+    border:none;
+}
+
+.plus-ad-close:active{
+    transform:scale(.9);
+}
+
+.plus-ad h4{
+    margin:12px 0 4px;
+    font-size:1.1rem;
+    font-weight:800;
+    background:linear-gradient(90deg,#fff,#a78bfa,#4cc9f0);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+}
+
+.plus-ad p{
+    font-size:.85rem;
+    color:var(--muted);
+    margin-bottom:10px;
+}
+
+.plus-ad ul{
+    list-style:none;
+    display:flex;
+    flex-direction:column;
+    gap:7px;
+    margin-bottom:16px;
+}
+
+.plus-ad li{
+    font-size:.82rem;
+    line-height:1.4;
+    color:var(--text);
+}
+
+.plus-ad-btn{
+    display:block;
+    width:100%;
+    padding:11px 16px;
+    text-align:center;
+    text-decoration:none;
+    font-weight:700;
+    font-size:.95rem;
+    color:#fff;
+    border-radius:999px;
+    background:linear-gradient(90deg,var(--accent),var(--accent2));
+    box-shadow:0 6px 18px rgba(124,92,255,.35);
+    transition:transform .25s ease, box-shadow .25s ease, filter .25s ease;
+}
+
+.plus-ad-btn:hover{
+    transform:translateY(-2px) scale(1.03);
+    box-shadow:0 10px 24px rgba(124,92,255,.5);
+    filter:brightness(1.1);
+}
+
+.plus-ad-btn:active{
+    transform:scale(.97);
+}
+
+.plus-ad-btn:focus-visible,
+.plus-ad-close:focus-visible{
+    outline:2px solid var(--accent2);
+    outline-offset:3px;
+}
+
+@media(max-width:768px){
+    .plus-ad{
+        right:12px;
+        bottom:12px;
+        width:270px;
+        padding:18px 14px 14px;
+    }
+
+    .plus-ad li{
+        font-size:.78rem;
+    }
+}
+
+@media(prefers-reduced-motion:reduce){
+    .plus-ad{
+        transition:opacity .2s ease;
+        transform:none;
+    }
+}
