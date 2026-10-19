@@ -9,6 +9,9 @@ const CACHE_KEY = "leviron-games-cache-v2";
 const CACHE_TTL = 24 * 60 * 60 * 1000;   // 24 hours
 const RETRY_COOLDOWN = 5 * 60 * 1000;     // if cached data is incomplete, don't re-ping more than once per 5 min
 
+// Every card gets the Tester badge, nothing else
+const ROLES = ["Tester"];
+
 // Silly error messages (one is picked at random)
 const ERROR_MESSAGES = [
     { emoji: "💥", title: "I think it broke...", sub: "Mind refreshing the site?" },
@@ -269,14 +272,11 @@ function card(g) {
     titleBox.appendChild(h3);
     content.appendChild(titleBox);
 
-    // Roles are optional - they only show up if the API sends a "roles" array
-    if (Array.isArray(g.roles)) {
-        for (const r of g.roles) {
-            const span = document.createElement("span");
-            span.className = "role";
-            span.textContent = r;
-            content.appendChild(span);
-        }
+    for (const r of ROLES) {
+        const span = document.createElement("span");
+        span.className = "role";
+        span.textContent = r;
+        content.appendChild(span);
     }
 
     const label = document.createElement("p");
@@ -392,15 +392,17 @@ init();
     ad.setAttribute("aria-label", "Roblox Plus offer");
 
     ad.innerHTML = `
+        <span class="plus-ad-tag">Ad · Referral link</span>
         <button class="plus-ad-close" type="button" aria-label="Close ad">✕</button>
 
-        <h4>Unlock More with Roblox Plus!</h4>
+        <h4>Unlock More with Roblox Plus! 🚀</h4>
         <p>Get the ultimate upgrade for just $4.99/mo:</p>
 
         <ul>
-            <li>10% OFF items instantly </li>
-            <li>FREE Private Servers</li>
-            <li>Fee-Free Robux Transfers</li>
+            <li>📉 10% OFF items instantly (up to 20% by month 3!)</li>
+            <li>🔒 FREE Private Servers for you and your friends</li>
+            <li>💸 Fee-Free Robux Transfers to swap with friends</li>
+            <li>🔄 Unlimited Trading &amp; exclusive profile gear</li>
         </ul>
 
         <a class="plus-ad-btn" href="${AD_LINK}" target="_blank" rel="noopener noreferrer sponsored">
